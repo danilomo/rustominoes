@@ -1,5 +1,7 @@
-#![ allow(unused)]
+#![allow(unused)]
 
+use anyhow::{anyhow, Result};
+use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -29,19 +31,57 @@ impl Domino {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Game {
-    players: [Vec<Domino>; 4],
-    board: Vec<Domino>,
-    next: i32,
+    pub players: [Vec<Domino>; 4],
+    pub board: Vec<Domino>,
+    pub next: i32,
     n_players: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Move {
     Left(usize, usize),
-    Right(usize, usize),
+    Right(usize, usize)
 }
 
 impl Move {
+   
+    pub fn parse_move(string: &str, player: usize) -> Option<Move> {
+        let parts = string.split_whitespace().collect::<Vec<_>>();
+        let slice = parts.as_slice();
+        match slice {
+            [side @ "left" | side @ "right", pos] => {
+                let pos_: usize = pos.parse().ok()?;
+
+                if *side == "left" {
+                    Some(Move::Left(player, pos_))
+                } else {
+                    Some(Move::Right(player, pos_))
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn parse(string: &str) -> Option<Move> {
+        let parts = string.split_whitespace().collect::<Vec<_>>();
+        let slice = parts.as_slice();
+
+        match slice {
+            [side @ "left" | side @ "right", player, pos] => {
+                let player_: usize = player.parse().ok()?;
+                let pos_: usize = pos.parse().ok()?;
+
+                if *side == "left" {
+                    Some(Move::Left(player_, pos_))
+                } else {
+                    Some(Move::Right(player_, pos_))
+                }
+            }
+
+            _ => None,
+        }
+    }
+
     fn unpack(&self) -> (usize, usize) {
         match *self {
             Move::Left(x, y) => (x, y),
@@ -52,37 +92,36 @@ impl Move {
 
 impl Game {
     fn shuffled_pieces() -> Vec<Domino> {
+        let mut rng = thread_rng();
         let mut pieces = (0..7)
             .flat_map(|i| (0..(i + 1)).map(move |j| Domino(i, j)))
             .collect::<Vec<Domino>>();
-        thread_rng().shuffle(&mut pieces);
+        pieces.shuffle(&mut rng);
         pieces
     }
 
     pub fn new(n_players: i32) -> Game {
         let pieces = Game::shuffled_pieces();
 
-        let players = if n_players == 2 {
-            [
+        let players = match n_players {
+            2 => [
                 pieces[0..14].to_vec(),
                 pieces[14..].to_vec(),
                 vec![],
                 vec![],
-            ]
-        } else if n_players == 3 {
-            [
+            ],
+            3 => [
                 pieces[0..9].to_vec(),
                 pieces[9..18].to_vec(),
                 pieces[18..27].to_vec(),
                 vec![],
-            ]
-        } else {
-            [
+            ],
+            _ => [
                 pieces[0..7].to_vec(),
                 pieces[7..14].to_vec(),
                 pieces[14..21].to_vec(),
                 pieces[21..].to_vec(),
-            ]
+            ],
         };
 
         let game = Game {
@@ -95,7 +134,7 @@ impl Game {
         game
     }
 
-    pub fn play(&mut self, move_: &Move) -> Result<(), &'static str> {
+    pub fn play(&mut self, move_: &Move) -> Result<()> {
         self.make_move(move_)?;
         self.incr_player();
         Ok(())
@@ -109,7 +148,7 @@ impl Game {
         }
     }
 
-    fn make_move(&mut self, move_: &Move) -> Result<(), &'static str> {
+    fn make_move(&mut self, move_: &Move) -> Result<()> {
         if self.board.is_empty() {
             let (player_num, piece_pos) = move_.unpack();
             let piece = self.players[player_num].remove(piece_pos);
@@ -123,7 +162,7 @@ impl Game {
         }
     }
 
-    fn play_left(&mut self, player_num: usize, piece_pos: usize) -> Result<(), &'static str> {
+    fn play_left(&mut self, player_num: usize, piece_pos: usize) -> Result<()> {
         let piece_from_board = self.board[0];
         let piece_to_play = self.players[player_num][piece_pos];
 
@@ -135,10 +174,10 @@ impl Game {
             return Ok(());
         }
 
-        Err("Invalid move")
+        Err(anyhow!("Invalid move".to_string()))
     }
 
-    fn play_right(&mut self, player_num: usize, piece_pos: usize) -> Result<(), &'static str> {
+    fn play_right(&mut self, player_num: usize, piece_pos: usize) -> Result<()> {
         let piece_from_board = self.board[self.board.len() - 1];
         let piece_to_play = self.players[player_num][piece_pos];
 
@@ -150,7 +189,7 @@ impl Game {
             return Ok(());
         }
 
-        Err("Invalid move")
+        Err(anyhow!("Invalid move".to_string()))
     }
 }
 
@@ -326,5 +365,21 @@ mod tests {
         }
 
         assert_eq!(expected, game);
+    }
+
+    #[test]
+    fn parse_moves() {
+        let moves: [(&str, Move); 4] = [
+            ("left 1 2", Move::Left(1, 2)),
+            ("right 1 2", Move::Right(1, 2)),
+            ("right 0 0", Move::Right(0, 0)),
+            ("left 1 1", Move::Left(1, 1)),
+        ];
+
+        for tuple in moves {
+            let (string, result) = tuple;
+
+            assert_eq!(result, Move::parse(string).unwrap());
+        }
     }
 }
