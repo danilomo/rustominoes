@@ -1,12 +1,11 @@
 use crate::game::*;
 use async_trait::async_trait;
 
-
 #[derive(Debug)]
 pub enum Message<'a> {
     Init((&'a Vec<Domino>, usize)),
     YourTurn,
-    Update(Move)
+    Update(Move),
 }
 
 #[async_trait]
@@ -21,7 +20,9 @@ pub async fn start_game(mut players: Vec<Box<dyn RemotePlayer>>) {
 
     for player in &mut players {
         let pieces = &game.players[player.number()];
-        player.send_message(Message::Init((pieces, player.number()))).await;
+        player
+            .send_message(Message::Init((pieces, player.number())))
+            .await;
     }
 
     loop {

@@ -40,11 +40,10 @@ pub struct Game {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Move {
     Left(usize, usize),
-    Right(usize, usize)
+    Right(usize, usize),
 }
 
 impl Move {
-   
     pub fn parse_move(string: &str, player: usize) -> Option<Move> {
         let parts = string.split_whitespace().collect::<Vec<_>>();
         let slice = parts.as_slice();

@@ -1,24 +1,21 @@
 use anyhow::Result;
-use tokio::net::TcpListener;
-use tokio::net::TcpStream;
-use tokio::signal;
-use tokio::io::BufReader;
-use tokio::io::AsyncBufReadExt;
-use tokio::io::AsyncWriteExt;
-use wait_for_me::CountDownLatch;
+use async_trait::async_trait;
 use rustominoes::concurrent::*;
 use rustominoes::game::Move;
-use async_trait::async_trait;
-use std::sync::Arc;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufReader;
+use tokio::net::TcpListener;
+use tokio::net::TcpStream;
+use wait_for_me::CountDownLatch;
 
 struct TelnetPlayer {
     buf_reader: BufReader<TcpStream>,
-    number: usize
+    number: usize,
 }
 
 #[async_trait]
 impl RemotePlayer for TelnetPlayer {
-
     async fn send_message<'a>(&mut self, message: Message<'a>) {
         let message = format!("{:?}\n", message);
         let _ = self.buf_reader.write(message.as_bytes()).await;
@@ -26,7 +23,7 @@ impl RemotePlayer for TelnetPlayer {
 
     async fn read_move(&mut self) -> Move {
         loop {
-            let mut message = String::new();  
+            let mut message = String::new();
             if let Err(_) = self.buf_reader.read_line(&mut message).await {
                 continue;
             }
@@ -54,12 +51,13 @@ async fn main() -> Result<()> {
             let l = latch.clone();
             let i = l.count().await;
             l.count_down().await;
-            
+
             match result {
                 Ok((stream, addr)) => Ok((stream, addr, i)),
-                Err(x) => Err(x)
+                Err(x) => Err(x),
             }
-        }.await?;
+        }
+        .await?;
 
         connections.push((BufReader::new(socket), number));
 
@@ -72,11 +70,14 @@ async fn main() -> Result<()> {
     let mut players: Vec<Box<dyn RemotePlayer>> = Vec::new();
 
     for elem in connections {
-        let player = Box::new(TelnetPlayer{number: elem.1 - 1, buf_reader: elem.0});
+        let player = Box::new(TelnetPlayer {
+            number: elem.1 - 1,
+            buf_reader: elem.0,
+        });
         players.push(player);
     }
 
-    start_game(players).await;    
+    start_game(players).await;
 
     Ok(())
 }

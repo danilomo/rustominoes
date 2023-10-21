@@ -4,9 +4,9 @@ use tokio::io::AsyncBufReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::signal;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::signal;
 use wait_for_me::CountDownLatch;
 
 async fn run_server(socket: TcpStream, number: usize, mut receiver: Receiver<()>) -> Result<()> {
@@ -18,7 +18,6 @@ async fn run_server(socket: TcpStream, number: usize, mut receiver: Receiver<()>
     conn.write(x.as_bytes()).await?;
 
     loop {
-
         let mut message = String::new();
         conn.read_line(&mut message).await?;
 
@@ -44,12 +43,13 @@ async fn main() -> Result<()> {
             let l = latch.clone();
             let i = l.count().await;
             l.count_down().await;
-            
+
             match result {
                 Ok((stream, addr)) => Ok((stream, addr, i)),
-                Err(x) => Err(x)
+                Err(x) => Err(x),
             }
-        }.await?;
+        }
+        .await?;
 
         let (sender, receiver) = mpsc::channel::<()>(1);
         senders.push(sender);
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
 
     tokio::spawn(async move {
         latch.wait().await;
-        
+
         for sender in &senders {
             let _ = sender.send(()).await;
         }
