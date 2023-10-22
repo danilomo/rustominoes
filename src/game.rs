@@ -43,6 +43,13 @@ pub enum Move {
     Right(usize, usize),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Update {
+    Skip,
+    Left(Domino),
+    Right(Domino)
+}
+
 impl Move {
     pub fn parse_move(string: &str, player: usize) -> Option<Move> {
         let parts = string.split_whitespace().collect::<Vec<_>>();
@@ -133,10 +140,11 @@ impl Game {
         game
     }
 
-    pub fn play(&mut self, move_: &Move) -> Result<()> {
-        self.make_move(move_)?;
+    pub fn play(&mut self, move_: &Move) -> Result<Update> {
+        let update =  self.make_move(move_)?;
         self.incr_player();
-        Ok(())
+        
+        Ok(update)
     }
 
     fn incr_player(&mut self) {
@@ -147,12 +155,12 @@ impl Game {
         }
     }
 
-    fn make_move(&mut self, move_: &Move) -> Result<()> {
+    fn make_move(&mut self, move_: &Move) -> Result<Update> {
         if self.board.is_empty() {
             let (player_num, piece_pos) = move_.unpack();
             let piece = self.players[player_num].remove(piece_pos);
             self.board.push(piece);
-            return Ok(());
+            return Ok(Update::Left(piece));
         }
 
         match *move_ {
@@ -161,7 +169,7 @@ impl Game {
         }
     }
 
-    fn play_left(&mut self, player_num: usize, piece_pos: usize) -> Result<()> {
+    fn play_left(&mut self, player_num: usize, piece_pos: usize) -> Result<Update> {
         let piece_from_board = self.board[0];
         let piece_to_play = self.players[player_num][piece_pos];
 
@@ -170,13 +178,13 @@ impl Game {
         if let Some(piece) = piece_to_play {
             self.board.insert(0, piece);
             self.players[player_num].remove(piece_pos);
-            return Ok(());
+            return Ok(Update::Left(piece));
         }
 
         Err(anyhow!("Invalid move".to_string()))
     }
 
-    fn play_right(&mut self, player_num: usize, piece_pos: usize) -> Result<()> {
+    fn play_right(&mut self, player_num: usize, piece_pos: usize) -> Result<Update> {
         let piece_from_board = self.board[self.board.len() - 1];
         let piece_to_play = self.players[player_num][piece_pos];
 
@@ -185,7 +193,7 @@ impl Game {
         if let Some(piece) = piece_to_play {
             self.board.push(piece);
             self.players[player_num].remove(piece_pos);
-            return Ok(());
+            return Ok(Update::Right(piece));
         }
 
         Err(anyhow!("Invalid move".to_string()))

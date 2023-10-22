@@ -3,18 +3,28 @@ syntax = "proto3";
 package dominoes;
 
 service GameService {
-    rpc joinGame(stream Message) returns (stream Message);
+    rpc JoinGame(stream Message) returns (stream Message);
+}
+
+enum Side {
+    LEFT = 0;
+    RIGHT = 1;
 }
 
 message Move {
-    int32 player = 1;
-    int32 handPosition = 2;
-    int32 side = 3;
+    int32 piece_position = 1;
+    Side side = 2;
+}
+
+message Piece {
+    int32 up = 1;
+    int32 down = 2;
 }
 
 message Update {
-    Move move = 1;
-    int32 turn = 2;
+    Piece move = 1;
+    Side position = 2;
+    int32 turn = 3;
 }
 
 message Response {
@@ -23,7 +33,7 @@ message Response {
 }
 
 message Join {
-    string gameId = 1;
+    string game_id = 1;
 }
 
 message Skip {

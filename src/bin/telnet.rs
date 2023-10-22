@@ -7,11 +7,19 @@ use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use wait_for_me::CountDownLatch;
 
 struct TelnetPlayer {
     buf_reader: BufReader<TcpStream>,
     number: usize,
+}
+
+impl TelnetPlayer {
+    fn new(buf_reader: BufReader<TcpStream>) -> Box<dyn RemotePlayer> {
+        Box::new(TelnetPlayer {
+            buf_reader,
+            number: 0,
+        })
+    }
 }
 
 #[async_trait]
@@ -37,47 +45,23 @@ impl RemotePlayer for TelnetPlayer {
     fn number(&self) -> usize {
         self.number
     }
+
+    fn set_number(&mut self, number: usize) {
+        self.number = number;
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let listener = TcpListener::bind("localhost:1234").await?;
-    let latch = CountDownLatch::new(4);
-    let mut connections = Vec::<(BufReader<TcpStream>, usize)>::new();
+    let game_handler = start_game();
 
     loop {
-        let (socket, _addr, number) = async {
-            let result = listener.accept().await;
-            let l = latch.clone();
-            let i = l.count().await;
-            l.count_down().await;
+        let (socket, _addr) = listener.accept().await?;
 
-            match result {
-                Ok((stream, addr)) => Ok((stream, addr, i)),
-                Err(x) => Err(x),
-            }
-        }
-        .await?;
-
-        connections.push((BufReader::new(socket), number));
-
-        if latch.count().await == 0 {
-            break;
+        if !game_handler.is_closed() {
+            let player = TelnetPlayer::new(BufReader::new(socket));
+            let _ = game_handler.send(player).await?;
         }
     }
-
-    latch.wait().await;
-    let mut players: Vec<Box<dyn RemotePlayer>> = Vec::new();
-
-    for elem in connections {
-        let player = Box::new(TelnetPlayer {
-            number: elem.1 - 1,
-            buf_reader: elem.0,
-        });
-        players.push(player);
-    }
-
-    start_game(players).await;
-
-    Ok(())
 }
