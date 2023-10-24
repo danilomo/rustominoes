@@ -1,7 +1,8 @@
 use rustominoes::grpc::client::*;
 use tokio;
+use anyhow::Result;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!()
+async fn main() -> Result<()> {
+    start_client().await
 }

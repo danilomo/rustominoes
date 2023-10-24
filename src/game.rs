@@ -47,7 +47,7 @@ pub enum Move {
 pub enum Update {
     Skip,
     Left(Domino),
-    Right(Domino)
+    Right(Domino),
 }
 
 impl Move {
@@ -141,9 +141,9 @@ impl Game {
     }
 
     pub fn play(&mut self, move_: &Move) -> Result<Update> {
-        let update =  self.make_move(move_)?;
+        let update = self.make_move(move_)?;
         self.incr_player();
-        
+
         Ok(update)
     }
 

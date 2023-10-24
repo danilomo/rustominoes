@@ -13,16 +13,24 @@ enum Side {
 
 message Move {
     int32 piece_position = 1;
-    Side side = 2;
+    int32 player_number = 2;
+    Side side = 3;
 }
+
+message YourTurn {}
 
 message Piece {
     int32 up = 1;
     int32 down = 2;
 }
 
+message Init {
+    repeated Piece hand = 1;
+    int32 number = 2;
+}
+
 message Update {
-    Piece move = 1;
+    Piece piece = 1;
     Side position = 2;
     int32 turn = 3;
 }
@@ -36,15 +44,16 @@ message Join {
     string game_id = 1;
 }
 
-message Skip {
-}
+message Skip {}
 
 message Message {
     oneof content {
         Move move = 1;
-        Update update = 2;
-        Response response = 3;
-        Join join = 4;
-        Skip skip = 5;
+        Init init = 2;
+        YourTurn you_turn = 3;
+        Update update = 4;
+        Response response = 5;
+        Join join = 6;
+        Skip skip = 7;
     }
 }
